@@ -16,15 +16,22 @@ print(f"{len(firstprints)} first prints filtered.")
 papercards = [card for card in firstprints if "paper" in card["games"]]
 print(f"{len(papercards)} paper-legal cards filtered.")
 
-print(papercards[0]["set"])
-
 setcards = [card for card in papercards if card["set"] in legal_sets]
 print(f"{len(setcards)} cards in legal sets filtered.")
 
 rarecards = [card for card in setcards if card["rarity"] in legal_rarities]
 print(f"{len(rarecards)} cards with legal rarities filtered.")
 
-outjson = json.dumps(rarecards,indent=4)
+usednames = []
+uniquecards = []
+# for loop instead of list comprehension to ensure linearity
+for card in rarecards:
+    if not (card["name"] in usednames):
+        uniquecards.append(card)
+        usednames.append(card["name"])
+print(f"{len(uniquecards)} cards with unique names filtered.")
+
+outjson = json.dumps(uniquecards,indent=4)
 
 with open("useful-cards.json", "w", encoding="utf8") as outfile:
     outfile.write(outjson)
