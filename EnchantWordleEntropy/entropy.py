@@ -1,7 +1,6 @@
 import json
 import math
-import re
-import unicodedata
+import sqlite3
 from collections import Counter
 
 # scryfall card dump filtered to only cards we expect enchant worldle to use
@@ -14,34 +13,24 @@ allnames = [card["name"] for card in allcards]
 
 total_patterns = len(allcards)
 
-def slugify(value, allow_unicode=False):
-    """
-    Taken from https://github.com/django/django/blob/master/django/utils/text.py
-    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
-    dashes to single dashes. Remove characters that aren't alphanumerics,
-    underscores, or hyphens. Convert to lowercase. Also strip leading and
-    trailing whitespace, dashes, and underscores.
-    """
-    value = str(value)
-    if allow_unicode:
-        value = unicodedata.normalize('NFKC', value)
-    else:
-        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-    value = re.sub(r'[^\w\s-]', '', value.lower())
-    return re.sub(r'[-\s]+', '-', value).strip('-_')
+dbcon = sqlite3.connect("patterns.db")
+dbcur = dbcon.cursor()
 
 def report(index, name):
-    if index % 1 == 0:
+    if index % 1000 == 0:
         print(f"Processed {index} cards. Last card: {name}")
 
 def calc_entropy(card,i):
     report(i,card["name"])
-    with open(f"patterns/{slugify(card['name'])}.json", "r", encoding="utf8") as patfile:
-        patjson = patfile.read()
-    patterns = json.loads(patjson)
-    # filter patterns to only include cards in allcards, in case we're checking a subset for a later guess
-    # there's got to be a better way to convert lists to tuples...
-    patterns = [(pattern[0], pattern[1], pattern[2], pattern[3], pattern[4], pattern[5]) for answer, pattern in patterns.items() if answer in allnames]
+    pairs = [(card["name"],answer) for answer in allnames]
+    patterns = []
+    # this is pain
+    for pair in pairs:
+        res = dbcur.execute("SELECT answer, mv, colour, rarity, suptype, subtype, year FROM patterns WHERE guess = ? AND answer = ?",pair)
+        patterns += res.fetchall()
+    # filter patterns to only include cards in allcards, in case we're checking a subset for a later guess'
+    # there's got to be a better way to work with these tuples...
+    patterns = [(pattern[1], pattern[2], pattern[3], pattern[4], pattern[5], pattern[6]) for pattern in patterns if pattern[0] in allnames]
     counts = Counter(patterns)
     probabilities = {pattern: counts[pattern] / total_patterns for pattern in counts}
     informations = {pattern: math.log2(1/probabilities[pattern]) for pattern in probabilities}
