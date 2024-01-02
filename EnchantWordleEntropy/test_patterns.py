@@ -1,6 +1,4 @@
 import json
-import re
-import unicodedata
 
 # scryfall card dump filtered to only cards we expect enchant worldle to use
 with open("useful-cards.json", "r", encoding="utf8") as mtgfile:
@@ -97,36 +95,9 @@ def generate_pattern(guess,answer):
             compare_type(guess,answer,False), # compare type and supertype
             compare_type(guess,answer,True), # compare subtype
             compare_year(guess,answer))
+    
+addle = [card for card in allcards if card["name"] == "Addle"][0]
+devint = [card for card in allcards if card["name"] == "Devour Intellect"][0]
 
-total_patterns = len(allcards)
-
-def report(index, name):
-    if index % 1000 == 0:
-        print(f"Processed {index} cards. Last card: {name}")
-
-def slugify(value, allow_unicode=False):
-    """
-    Taken from https://github.com/django/django/blob/master/django/utils/text.py
-    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
-    dashes to single dashes. Remove characters that aren't alphanumerics,
-    underscores, or hyphens. Convert to lowercase. Also strip leading and
-    trailing whitespace, dashes, and underscores.
-    """
-    value = str(value)
-    if allow_unicode:
-        value = unicodedata.normalize('NFKC', value)
-    else:
-        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-    value = re.sub(r'[^\w\s-]', '', value.lower())
-    return re.sub(r'[-\s]+', '-', value).strip('-_')
-
-def generate_patterns(card,i):
-    report(i,card["name"])
-    # save patterns in individual files per guess card because we can't store all combinations in memory
-    patterns = {answer["name"]: generate_pattern(card,answer) for answer in allcards}
-    outjson = json.dumps(patterns)
-    with open(f"patterns/{slugify(card['name'])}.json", "w", encoding="utf8") as outfile:
-        outfile.write(outjson)
-
-[generate_patterns(card,i) for i,card in enumerate(allcards)]
-
+print(generate_pattern(addle, devint))
+print(generate_pattern(devint, addle))
